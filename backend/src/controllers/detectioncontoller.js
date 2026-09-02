@@ -44,6 +44,11 @@ async function createdetection(req,res){
     const{busId,latitude,longitude}=req.body
     try{
         const file=req.file
+        if(!file){
+            return res.status(400).json({
+                message:"No image file received"
+            })
+        }
         const uploadPath=path.join(__dirname,"../../../uploads",file.originalname)
         fs.writeFileSync(uploadPath,file.buffer)
 
