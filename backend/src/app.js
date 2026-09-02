@@ -10,7 +10,7 @@ app.use((req, res, next) => {
     next();
 });
 
-const detectionrouter = require("./routers/detectionroute");
+const {detectionrouter} = require("./routers/detectionroute");
 
 app.use("/yolo/api", detectionrouter);
 
