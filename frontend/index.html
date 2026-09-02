@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Road Hazard Intelligence — Live Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0D0F12;
+    --surface: #191E22;
+    --surface-2: #21272C;
+    --surface-3: #2A3137;
+    --line: #2E353B;
+    --text: #F3F4F5;
+    --muted: #8B939A;
+    --amber: #FFB020;
+    --amber-2: #FFCB6B;
+    --amber-dim: rgba(255,176,32,0.14);
+    --red: #F0555A;
+    --red-dim: rgba(240,85,90,0.14);
+    --green: #3FB27F;
+    --radius: 8px;
+  }
+  *{box-sizing:border-box;}
+  ::selection{ background:var(--amber); color:#1a1a1a; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 550px at 12% -8%, rgba(255,176,32,0.07), transparent),
+      radial-gradient(900px 500px at 100% 0%, rgba(240,85,90,0.05), transparent),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-block-size:100vh;
+    position:relative;
+  }
+  /* fine grain texture overlay for a control-room feel */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none;
+    opacity:0.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index:0;
+  }
+
+  .hazard-rule{
+    block-size:7px;
+    inline-size:100%;
+    background: repeating-linear-gradient(
+      135deg,
+      var(--amber),
+      var(--amber) 14px,
+      #101214 14px,
+      #101214 28px
+    );
+    background-size: 200% 100%;
+    animation: crawl 6s linear infinite;
+    position:relative; z-index:1;
+  }
+  @keyframes crawl{
+    from{ background-position: 0 0; }
+    to{ background-position: -80px 0; }
+  }
+
+  header{
+    padding:30px 32px 22px;
+    border-block-end:1px solid var(--line);
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.025), transparent);
+    position:relative; z-index:1;
+  }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand .mark{
+    inline-size:44px; block-size:44px;
+    border-radius:10px;
+    background:linear-gradient(145deg, var(--amber), #C97E00);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px rgba(255,176,32,0.3);
+    flex-shrink:0;
+  }
+  .brand .mark svg{ inline-size:24px; block-size:24px; }
+  .brand h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    letter-spacing:0.02em;
+    text-transform:uppercase;
+    font-size:1.7rem;
+    margin:0 0 3px;
+  }
+  .brand h1 .grad{
+    background:linear-gradient(90deg, var(--amber-2), var(--amber));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .brand .tag{
+    font-size:0.82rem;
+    color:var(--muted);
+  }
+  .status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.76rem;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:9px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    padding:8px 14px;
+    border-radius:100px;
+  }
+  .radar{
+    position:relative;
+    inline-size:9px; block-size:9px; border-radius:50%;
+    background:var(--green);
+  }
+  .radar::after{
+    content:"";
+    position:absolute; inset:-4px;
+    border-radius:50%;
+    border:1.5px solid var(--green);
+    animation:radarPing 1.8s ease-out infinite;
+  }
+  @keyframes radarPing{
+    0%{ transform:scale(0.6); opacity:0.9; }
+    100%{ transform:scale(2.2); opacity:0; }
+  }
+
+  .stat-strip{
+    display:flex;
+    gap:1px;
+    background:var(--line);
+    border-block-end:1px solid var(--line);
+    position:relative; z-index:1;
+  }
+  .stat{
+    flex:1;
+    background:var(--surface);
+    padding:20px 28px;
+    position:relative;
+    overflow:hidden;
+  }
+  .stat::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+    pointer-events:none;
+  }
+  .stat .label{
+    font-size:0.71rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-block-end:7px;
+    display:flex; align-items:center; gap:7px;
+  }
+  .stat .label svg{ inline-size:13px; block-size:13px; opacity:0.8; }
+  .stat .value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:2.1rem;
+    font-weight:600;
+    line-height:1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat.pothole .value{ color:var(--amber); }
+  .stat.accident .value{ color:var(--red); }
+
+  /* road-line divider motif used between sections */
+  .lane-divider{
+    block-size:1px;
+    background-image:repeating-linear-gradient(90deg, var(--line) 0 18px, transparent 18px 30px);
+    margin: 0 32px;
+    position:relative; z-index:1;
+  }
+
+  main{
+    padding:32px 32px 70px;
+    max-inline-size:1240px;
+    margin:0 auto;
+    position:relative; z-index:1;
+  }
+  .toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-block-end:22px;
+  }
+  .toolbar h2{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    font-size:1.02rem;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    margin:0;
+    display:flex; align-items:center; gap:9px;
+  }
+  .toolbar h2::before{
+    content:"";
+    inline-size:4px; block-size:16px;
+    background:var(--amber);
+    border-radius:2px;
+    display:inline-block;
+  }
+  button{
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:0.85rem;
+    border:none;
+    border-radius:var(--radius);
+    padding:11px 20px;
+    cursor:pointer;
+    transition:filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+  button svg{ inline-size:15px; block-size:15px; }
+  button:active{ transform:scale(0.96); }
+  button:hover{ filter:brightness(1.14); }
+  button:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+  .btn-primary{
+    background:linear-gradient(145deg, var(--amber-2), var(--amber));
+    color:#1a1400;
+    box-shadow:0 6px 18px rgba(255,176,32,0.28);
+  }
+  .btn-ghost{
+    background:var(--surface);
+    color:var(--text);
+    border:1px solid var(--line);
+  }
+  #refreshBtn.spinning svg{ animation:spin 0.6s linear; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(275px, 1fr));
+    gap:18px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    cursor:pointer;
+    transition:border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover{
+    border-color:var(--amber);
+    transform:translateY(-4px);
+    box-shadow:0 14px 34px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,176,32,0.15);
+  }
+  .card.is-accident:hover{ border-color:var(--red); box-shadow:0 14px 34px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,85,90,0.18); }
+  .card .thumb{
+    inline-size:100%;
+    aspect-ratio:16/10;
+    background:var(--surface-2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.7rem;
+    letter-spacing:0.05em;
+    overflow:hidden;
+    position:relative;
+  }
+  .card .thumb::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.35));
+    pointer-events:none;
+  }
+  .card .thumb img{ inline-size:100%; block-size:100%; object-fit:cover; display:block; transition:transform 0.35s ease; }
+  .card:hover .thumb img{ transform:scale(1.07); }
+  .card .body{ padding:14px 16px 16px; }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.68rem;
+    font-weight:600;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:100px;
+    margin-block-end:10px;
+  }
+  .badge::before{ content:""; inline-size:6px; block-size:6px; border-radius:50%; }
+  .badge.pothole{ background:var(--amber-dim); color:var(--amber); }
+  .badge.pothole::before{ background:var(--amber); box-shadow:0 0 6px var(--amber); }
+  .badge.accident{ background:var(--red-dim); color:var(--red); }
+  .badge.accident::before{ background:var(--red); box-shadow:0 0 6px var(--red); }
+  .badge.unknown{ background:rgba(139,147,154,0.15); color:var(--muted); }
+  .badge.unknown::before{ background:var(--muted); }
+  .card .meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.75rem;
+    color:var(--muted);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .card .bus{ color:var(--text); font-weight:600; }
+
+  .empty{
+    padding:80px 20px;
+    text-align:center;
+    color:var(--muted);
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+    background:var(--surface);
+  }
+  .empty svg{ inline-size:52px; block-size:52px; opacity:0.35; margin-block-end:14px; }
+  .empty .big{
+    font-family:'Oswald', sans-serif;
+    font-size:1.15rem;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    color:var(--text);
+    margin-block-end:7px;
+  }
+
+  .skeleton{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .skeleton .thumb, .skeleton .line{
+    background:linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.4s infinite;
+  }
+  .skeleton .thumb{ aspect-ratio:16/10; }
+  .skeleton .body{ padding:14px 16px 16px; }
+  .skeleton .line{ block-size:12px; border-radius:3px; margin-block-end:9px; inline-size:60%; }
+  @keyframes shimmer{
+    0%{ background-position:200% 0; }
+    100%{ background-position:-200% 0; }
+  }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(6,7,8,0.8);
+    backdrop-filter:blur(4px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  .overlay.open{ display:flex; animation:fadeIn 0.15s ease; }
+  @keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+  .modal{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    max-inline-size:530px;
+    inline-size:100%;
+    max-block-size:88vh;
+    overflow-y:auto;
+    box-shadow:0 30px 90px rgba(0,0,0,0.55);
+    animation:riseIn 0.2s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes riseIn{ from{ opacity:0; transform:translateY(14px) scale(0.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+  .modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 22px;
+    border-block-end:1px solid var(--line);
+  }
+  .modal-head h3{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    font-size:0.97rem;
+    letter-spacing:0.06em;
+    margin:0;
+  }
+  .modal-head button{
+    background:none; color:var(--muted); font-size:1.2rem; padding:4px 9px; border-radius:6px;
+  }
+  .modal-head button:hover{ color:var(--text); background:var(--surface-2); }
+  .modal-body{ padding:22px; }
+  .modal-body img{ inline-size:100%; border-radius:var(--radius); margin-block-end:18px; display:block; border:1px solid var(--line); }
+
+  .conf-bar-wrap{ margin-block-end:20px; }
+  .conf-bar-track{
+    block-size:9px;
+    background:var(--surface-2);
+    border-radius:100px;
+    overflow:hidden;
+    margin-block-start:7px;
+    border:1px solid var(--line);
+  }
+  .conf-bar-fill{
+    block-size:100%;
+    border-radius:100px;
+    transition:width 0.5s cubic-bezier(.2,.8,.3,1);
+  }
+
+  .detail-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  .detail-grid .field.full{ grid-column:1 / -1; }
+  .field label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    margin-block-end:7px;
+  }
+  .field label svg{ inline-size:13px; block-size:13px; opacity:0.75; }
+  .field .val{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.94rem;
+  }
+  .create-field label{
+    display:block; font-size:0.72rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--muted); margin-block-end:6px;
+  }
+  .create-field input{
+    inline-size:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    color:var(--text);
+    padding:10px 12px;
+    font-family:'Inter', sans-serif;
+    font-size:0.88rem;
+  }
+  .create-field input:focus{
+    outline:2px solid var(--amber); outline-offset:0; border-color:transparent;
+  }
+  .create-field{ margin-block-end:16px; }
+  .modal-foot{
+    padding:18px 22px;
+    border-block-start:1px solid var(--line);
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+  }
+  .hint{ font-size:0.78rem; color:var(--muted); margin-block-start:7px; }
+  .err{ color:var(--red); font-size:0.82rem; margin-block-start:10px; }
+
+  footer{
+    text-align:center;
+    padding:24px;
+    font-size:0.75rem;
+    color:var(--muted);
+    font-family:'IBM Plex Mono', monospace;
+    border-block-start:1px solid var(--line);
+    position:relative; z-index:1;
+  }
+</style>
+</head>
+<body>
+
+<div class="hazard-rule"></div>
+
+<header>
+  <div class="brand">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a1400" stroke-width="2.2"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="#1a1400"/></svg>
+    </div>
+    <div>
+      <h1>Road Hazard <span class="grad">Intelligence</span></h1>
+      <div class="tag">Pothole & accident detection — public transport fleet</div>
+    </div>
+  </div>
+  <div class="status"><span class="radar"></span> LIVE FEED &nbsp;·&nbsp; <span id="apiTarget"></span></div>
+</header>
+
+<div class="stat-strip">
+  <div class="stat">
+    <div class="label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6v6H9z"/></svg>Total Detections</div>
+    <div class="value" id="statTotal">0</div>
+  </div>
+  <div class="stat pothole">
+    <div class="label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>Potholes</div>
+    <div class="value" id="statPothole">0</div>
+  </div>
+  <div class="stat accident">
+    <div class="label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 21h20L12 2z"/><path d="M12 9v5"/></svg>Accidents</div>
+    <div class="value" id="statAccident">0</div>
+  </div>
+</div>
+
+<div class="lane-divider"></div>
+
+<main>
+  <div class="toolbar">
+    <h2>Recent Reports</h2>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-ghost" id="refreshBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v6h-6"/></svg>
+        Refresh
+      </button>
+      <button class="btn-primary" id="newBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1a1400" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+        New Detection
+      </button>
+    </div>
+  </div>
+
+  <div id="gridWrap">
+    <div class="grid">
+      <div class="skeleton"><div class="thumb"></div><div class="body"><div class="line" style="inline-size:40%"></div><div class="line" style="inline-size:70%"></div></div></div>
+      <div class="skeleton"><div class="thumb"></div><div class="body"><div class="line" style="inline-size:40%"></div><div class="line" style="inline-size:70%"></div></div></div>
+      <div class="skeleton"><div class="thumb"></div><div class="body"><div class="line" style="inline-size:40%"></div><div class="line" style="inline-size:70%"></div></div></div>
+    </div>
+  </div>
+</main>
+
+<footer>SIH26124 — AI-Powered Mobile Urban Intelligence Platform Using Public Transport Fleet</footer>
+
+<!-- Detail modal -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Detection Detail</h3>
+      <button id="closeDetail">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- Create modal -->
+<div class="overlay" id="createOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Log New Detection</h3>
+      <button id="closeCreate">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="create-field">
+        <label for="busId">Bus / Vehicle ID</label>
+        <input type="text" id="busId" placeholder="e.g. BUS-014">
+      </div>
+      <div class="create-field">
+        <label for="latitude">Latitude</label>
+        <input type="text" id="latitude" placeholder="28.6139">
+      </div>
+      <div class="create-field">
+        <label for="longitude">Longitude</label>
+        <input type="text" id="longitude" placeholder="77.2090">
+      </div>
+      <div class="create-field">
+        <label for="imageFile">Image</label>
+        <input type="file" id="imageFile" accept="image/*">
+        <div class="hint">Uploaded to the detection pipeline — the model runs server-side on this image.</div>
+      </div>
+      <div class="err" id="createErr" style="display:none;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="cancelCreate">Cancel</button>
+      <button class="btn-primary" id="submitCreate">Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- CONFIG: point this at your backend ----
+  const API_BASE = "http://localhost:3000/yolo/api";
+  const ENDPOINTS = {
+    all: `${API_BASE}/getalldetection`,
+    one: (id) => `${API_BASE}/getdetection/${id}`,
+    create: `${API_BASE}/createdetection`,
+  };
+  // ---------------------------------------------
+
+  document.getElementById("apiTarget").textContent = API_BASE;
+
+  const gridWrap = document.getElementById("gridWrap");
+  const statTotal = document.getElementById("statTotal");
+  const statPothole = document.getElementById("statPothole");
+  const statAccident = document.getElementById("statAccident");
+
+  const ICONS = {
+    bus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="16.5" cy="18" r="1.5"/><path d="M3 11h18"/></svg>`,
+    pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+    clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+    hash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>`,
+  };
+
+  function firstDetection(record) {
+    const d = record.detections;
+    if (Array.isArray(d) && d.length && typeof d[0] === "object") return d[0];
+    return { class: Array.isArray(d) ? d[0] : d, confidence: null };
+  }
+
+  function badgeClass(cls) {
+    if (!cls) return "unknown";
+    const c = String(cls).toLowerCase();
+    if (c.includes("pothole")) return "pothole";
+    if (c.includes("accident")) return "accident";
+    return "unknown";
+  }
+
+  function fmtTime(record) {
+    const t = record.createdAt || record.timestamp;
+    if (!t) return "—";
+    try {
+      return new Date(t).toLocaleString(undefined, {
+        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+      });
+    } catch { return "—"; }
+  }
+
+  function findRecordArray(obj, depth = 0) {
+    if (depth > 3 || obj == null) return null;
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return obj;
+      if (typeof obj[0] === "object" && "busId" in obj[0]) return obj;
+      return null;
+    }
+    if (typeof obj === "object") {
+      for (const key of Object.keys(obj)) {
+        const found = findRecordArray(obj[key], depth + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function findSingleRecord(obj, depth = 0) {
+    if (depth > 3 || obj == null || typeof obj !== "object") return null;
+    if (!Array.isArray(obj) && "busId" in obj) return obj;
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        const found = findSingleRecord(item, depth + 1);
+        if (found) return found;
+      }
+      return null;
+    }
+    for (const key of Object.keys(obj)) {
+      const found = findSingleRecord(obj[key], depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function animateCount(el, target) {
+    const start = 0;
+    const duration = 600;
+    const startTime = performance.now();
+    function tick(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(start + (target - start) * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function renderStats(records) {
+    let pothole = 0, accident = 0;
+    records.forEach(r => {
+      const cls = badgeClass(firstDetection(r).class);
+      if (cls === "pothole") pothole++;
+      if (cls === "accident") accident++;
+    });
+    animateCount(statTotal, records.length);
+    animateCount(statPothole, pothole);
+    animateCount(statAccident, accident);
+  }
+
+  function renderGrid(records) {
+    if (!records.length) {
+      gridWrap.innerHTML = `
+        <div class="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2 2 21h20L12 2z"/><path d="M12 9v5"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
+          <div class="big">No detections yet</div>
+          <div>Once the pipeline flags a pothole or accident, it shows up here.</div>
+        </div>`;
+      return;
+    }
+
+    const cards = records.map(r => {
+      const det = firstDetection(r);
+      const cls = badgeClass(det.class);
+      const confText = (typeof det.confidence === "number")
+        ? `${(det.confidence * 100).toFixed(0)}%` : "—";
+      const thumb = r.imageUrl
+        ? `<img src="${r.imageUrl}" alt="${det.class || 'detection'}" loading="lazy">`
+        : `NO IMAGE`;
+
+      return `
+        <div class="card ${cls === 'accident' ? 'is-accident' : ''}" data-id="${r._id}">
+          <div class="thumb">${thumb}</div>
+          <div class="body">
+            <span class="badge ${cls}">${det.class || "unknown"}</span>
+            <div class="meta">
+              <span class="bus">${r.busId || "—"}</span>
+              <span>${confText} · ${fmtTime(r)}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+
+    gridWrap.innerHTML = `<div class="grid">${cards}</div>`;
+
+    gridWrap.querySelectorAll(".card").forEach(card => {
+      card.addEventListener("click", () => openDetail(card.dataset.id));
+    });
+  }
+
+  async function loadAll() {
+    try {
+      const res = await fetch(ENDPOINTS.all);
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+      const records = findRecordArray(data) || [];
+      renderStats(records);
+      renderGrid(records.slice().reverse());
+    } catch (err) {
+      gridWrap.innerHTML = `
+        <div class="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16" r="0.6" fill="currentColor"/></svg>
+          <div class="big">Couldn't reach the backend</div>
+          <div>${err.message}. Check that the server is running and API_BASE is correct.</div>
+        </div>`;
+    }
+  }
+
+  const detailOverlay = document.getElementById("detailOverlay");
+  const detailBody = document.getElementById("detailBody");
+
+  async function openDetail(id) {
+    detailBody.innerHTML = `<div class="hint">Loading…</div>`;
+    detailOverlay.classList.add("open");
+    try {
+      const res = await fetch(ENDPOINTS.one(id));
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+      const record = findSingleRecord(data);
+      if (!record) throw new Error("Unexpected response shape from server");
+
+      const det = firstDetection(record);
+      const cls = badgeClass(det.class);
+      const confPct = (typeof det.confidence === "number") ? det.confidence * 100 : null;
+      const confColor = cls === "accident" ? "var(--red)" : "var(--amber)";
+
+      detailBody.innerHTML = `
+        ${record.imageUrl ? `<img src="${record.imageUrl}" alt="${det.class}">` : ""}
+        <span class="badge ${cls}">${det.class || "unknown"}</span>
+
+        ${confPct !== null ? `
+        <div class="conf-bar-wrap">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <label style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);">Confidence</label>
+            <span class="val" style="color:${confColor}; font-weight:700;">${confPct.toFixed(1)}%</span>
+          </div>
+          <div class="conf-bar-track">
+            <div class="conf-bar-fill" style="inline-size:${confPct}%; background:${confColor};"></div>
+          </div>
+        </div>` : ""}
+
+        <div class="detail-grid">
+          <div class="field">
+            <label>${ICONS.bus} Bus / Vehicle</label>
+            <div class="val">${record.busId || "—"}</div>
+          </div>
+          <div class="field">
+            <label>${ICONS.clock} Logged</label>
+            <div class="val">${fmtTime(record)}</div>
+          </div>
+          <div class="field full">
+            <label>${ICONS.pin} Coordinates</label>
+            <div class="val">${record.latitude ?? "—"}, ${record.longitude ?? "—"}</div>
+          </div>
+          <div class="field full">
+            <label>${ICONS.hash} Record ID</label>
+            <div class="val" style="word-break:break-all; font-size:0.78rem; color:var(--muted);">${record._id || id}</div>
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      detailBody.innerHTML = `<div class="err">Couldn't load this record: ${err.message}</div>`;
+    }
+  }
+
+  document.getElementById("closeDetail").addEventListener("click", () => {
+    detailOverlay.classList.remove("open");
+  });
+  detailOverlay.addEventListener("click", (e) => {
+    if (e.target === detailOverlay) detailOverlay.classList.remove("open");
+  });
+
+  const createOverlay = document.getElementById("createOverlay");
+  const createErr = document.getElementById("createErr");
+
+  document.getElementById("newBtn").addEventListener("click", () => {
+    createErr.style.display = "none";
+    createOverlay.classList.add("open");
+  });
+  document.getElementById("closeCreate").addEventListener("click", () => createOverlay.classList.remove("open"));
+  document.getElementById("cancelCreate").addEventListener("click", () => createOverlay.classList.remove("open"));
+  createOverlay.addEventListener("click", (e) => {
+    if (e.target === createOverlay) createOverlay.classList.remove("open");
+  });
+
+  document.getElementById("submitCreate").addEventListener("click", async () => {
+    const busId = document.getElementById("busId").value.trim();
+    const latitude = document.getElementById("latitude").value.trim();
+    const longitude = document.getElementById("longitude").value.trim();
+    const fileInput = document.getElementById("imageFile");
+    const file = fileInput.files[0];
+
+    createErr.style.display = "none";
+
+    if (!busId || !latitude || !longitude || !file) {
+      createErr.textContent = "Bus ID, latitude, longitude, and an image are all required.";
+      createErr.style.display = "block";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("busId", busId);
+    formData.append("latitude", latitude);
+    formData.append("longitude", longitude);
+    formData.append("Image", file);
+
+    const submitBtn = document.getElementById("submitCreate");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+
+    try {
+      const res = await fetch(ENDPOINTS.create, { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `Server responded ${res.status}`);
+
+      createOverlay.classList.remove("open");
+      document.getElementById("busId").value = "";
+      document.getElementById("latitude").value = "";
+      document.getElementById("longitude").value = "";
+      fileInput.value = "";
+      loadAll();
+    } catch (err) {
+      createErr.textContent = err.message;
+      createErr.style.display = "block";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit";
+    }
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", (e) => {
+    e.currentTarget.classList.add("spinning");
+    setTimeout(() => e.currentTarget.classList.remove("spinning"), 600);
+    loadAll();
+  });
+
+  loadAll();
+</script>
+
+</body>
+</html>
