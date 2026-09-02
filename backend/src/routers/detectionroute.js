@@ -8,7 +8,16 @@ const detectController=require("../controllers/detectioncontoller")
 const detectionrouter=express.Router()
 
 
-detectionrouter.post("/createdetection",upload.single("Image"),detectController.createdetection)
+router.post(
+    "/createdetection",
+    upload.single("Image"),
+    (req, res, next) => {
+        console.log("MULTER FILE:", req.file);
+        console.log("MULTER BODY:", req.body);
+        next();
+    },
+    detectController.createdetection
+);
 detectionrouter.get("/getalldetection",detectController.getalldetection)
 detectionrouter.get("/getdetection/:id",detectController.getdetectionById)
 detectionrouter.get("/getalldetection",detectController.getalldetection)
