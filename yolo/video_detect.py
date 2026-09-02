@@ -15,7 +15,7 @@ How it works — and why this version is different:
 
 Install once: pip install ultralytics opencv-python requests
 """
-
+import json
 import cv2
 import time
 import threading
@@ -63,7 +63,7 @@ def confirmed_classes():
     return {c for c, n in counts.items() if n >= CONFIRM_FRAMES}
 
 
-def report_to_backend(frame):
+def report_to_backend(frame,detections):
     """
     Sends the confirmed-detection frame to the backend exactly like your
     original Postman flow does — a plain image upload. Your backend's
@@ -82,6 +82,10 @@ def report_to_backend(frame):
         "busId": BUS_ID,
         "latitude": "28.6139",   # placeholder until real onboard GPS is wired up
         "longitude": "77.2090",  # placeholder until real onboard GPS is wired up
+        "detections":json.dumps([
+            {"class": label, "confidence": conf, "box": box}
+            for label, conf, box in detections
+        ])
     }
     try:
         resp = requests.post(BACKEND_URL, files=files, data=data_fields, timeout=REQUEST_TIMEOUT)
