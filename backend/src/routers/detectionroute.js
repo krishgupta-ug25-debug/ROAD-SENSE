@@ -8,7 +8,7 @@ const detectController=require("../controllers/detectioncontoller")
 const detectionrouter=express.Router()
 
 
-router.post(
+detectionrouter.post(
     "/createdetection",
     upload.single("Image"),
     (req, res, next) => {
