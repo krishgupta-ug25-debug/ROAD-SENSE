@@ -1,5 +1,6 @@
 const detectModel=require("../model/model");
 const fs=require("fs");
+const os=require("os")
 const {spawn}=require("child_process") // Means to run python script from nodejs we need to use child_process module
 const path=require("path")
 const {uploadImageToImageKit}=require("../services/storage.service")
@@ -49,7 +50,7 @@ async function createdetection(req,res){
                 message:"No image file received"
             })
         }
-        const uploadPath=path.join(__dirname,"../../../uploads",file.originalname)
+        const uploadPath=path.join(os.tmpdir(),file.originalname);
         fs.writeFileSync(uploadPath,file.buffer)
 
         const result=await uploadImageToImageKit(file,req.body)
