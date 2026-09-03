@@ -12,3 +12,4 @@ uploads/*.jpeg
 uploads/*.png
 .DS_Store
 Thumbs.db
+*.pt
