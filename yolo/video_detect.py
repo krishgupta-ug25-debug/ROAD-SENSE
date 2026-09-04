@@ -11,7 +11,7 @@ from ultralytics import YOLO
 POTHOLE_MODEL_PATH = "pothole_best.pt"              
 ACCIDENT_MODEL_PATH = "accident_best.pt"            
 VIDEO_SOURCE = "https://192.168.29.197:8080/video"  # RTSP or HTTP video stream URL, or local file path             
-BACKEND_URL = "http://localhost:3000/yolo/api" 
+BACKEND_URL = "http://road-sense-ekn7.onrender.com/yolo/api" 
 BUS_ID = "TEST-BUS-01"
 CONF_THRESHOLD = 0.4   
 CONFIRM_FRAMES = 3      
