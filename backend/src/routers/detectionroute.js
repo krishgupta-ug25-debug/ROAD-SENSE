@@ -20,6 +20,5 @@ detectionrouter.post(
 );
 detectionrouter.get("/getalldetection",detectController.getalldetection)
 detectionrouter.get("/getdetection/:id",detectController.getdetectionById)
-detectionrouter.get("/getalldetection",detectController.getalldetection)
 
 module.exports={detectionrouter}

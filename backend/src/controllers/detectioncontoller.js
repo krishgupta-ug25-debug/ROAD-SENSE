@@ -19,11 +19,6 @@ function runYOLO(imagePath) {
                 return reject(new Error(`Python script exited with code ${code}`))
             }
 
-            // main.py's stdout can have warning/log noise mixed in (e.g. a
-            // one-time ultralytics settings warning) before or after the
-            // actual JSON result. Instead of trusting the whole output,
-            // scan line by line from the end and take the last line that
-            // is genuinely valid JSON — that's the real detection result.
             const lines = output.split('\n').map(l => l.trim()).filter(Boolean)
 
             for (let i = lines.length - 1; i >= 0; i--) {
@@ -55,7 +50,7 @@ async function createdetection(req,res){
 
         const result=await uploadImageToImageKit(file,req.body)
         
-        const yoloResult=JSON.parse(await runYOLO(uploadPath))
+        const yoloResult = JSON.parse(req.body.detections)
         if (!yoloResult || yoloResult.length === 0) {
             return res.status(400).json({
                 message: "No detections found"
@@ -72,11 +67,12 @@ async function createdetection(req,res){
         })
     }
     catch(err){
-        console.log(err)
-        return res.status(400).json({
-            message:"Couldn't save to DB"
-        })
-    }
+    console.log("DB ERROR:", err)
+    return res.status(400).json({
+        message:"Couldn't save to DB",
+        error: err.message
+    })
+}
 }
 async function getalldetection(req,res){
     const allevents=await detectModel.find()

@@ -574,7 +574,7 @@
 
 <script>
   // ---- CONFIG: point this at your backend ----
-  const API_BASE = "https://road-sense-ekn7.onrender.com/yolo/api";
+  const API_BASE = "http://localhost:3000/yolo/api";
   const ENDPOINTS = {
     all: `${API_BASE}/getalldetection`,
     one: (id) => `${API_BASE}/getdetection/${id}`,
@@ -597,10 +597,20 @@
   };
 
   function firstDetection(record) {
-    const d = record.detections;
-    if (Array.isArray(d) && d.length && typeof d[0] === "object") return d[0];
-    return { class: Array.isArray(d) ? d[0] : d, confidence: null };
+  const d = record.detections;
+
+  if (Array.isArray(d) && d.length && typeof d[0] === "object") {
+    return {
+      class: d[0].type || d[0].class,
+      confidence: d[0].confidence
+    };
   }
+
+  return {
+    class: Array.isArray(d) ? d[0] : d,
+    confidence: null
+  };
+}
 
   function badgeClass(cls) {
     if (!cls) return "unknown";
