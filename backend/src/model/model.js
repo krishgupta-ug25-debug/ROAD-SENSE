@@ -13,6 +13,10 @@ const Schema=new mongoose.Schema({
         type:Number,
         required:true
     },
+    roadName:{
+        type:String,
+        default:"Unknown Road"
+    },
     imageUrl:{
         type:String,
         required:true

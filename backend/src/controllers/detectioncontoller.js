@@ -35,8 +35,42 @@ function runYOLO(imagePath) {
     })
 }
 // Use of this function is to run the YOLO model on a given image and return the output as a promise. It spawns a child process to execute the Python script and captures the output from stdout. If the script exits successfully, it resolves the promise with the output; otherwise, it rejects the promise with an error.
+async function getRoadName(latitude, longitude) {
+    try {
+        const url =
+            `https://nominatim.openstreetmap.org/reverse` +
+            `?format=jsonv2` +
+            `&lat=${latitude}` +
+            `&lon=${longitude}` +
+            `&zoom=18` +
+            `&addressdetails=1`;
 
+        const response = await fetch(url, {
+            headers: {
+                "User-Agent": "RoadSense-SIH"
+            }
+        });
+
+        if (!response.ok) {
+            return "Unknown Road";
+        }
+
+        const data = await response.json();
+
+        return (
+            data.address?.road ||
+            data.address?.pedestrian ||
+            data.address?.residential ||
+            "Unknown Road"
+        );
+
+    } catch (error) {
+        console.log("GEOCODING ERROR:", error.message);
+        return "Unknown Road";
+    }
+}
 async function createdetection(req,res){
+    console.log("🔥 CREATE DETECTION HIT");
     const{busId,latitude,longitude}=req.body
     try{
         const file=req.file
@@ -49,7 +83,8 @@ async function createdetection(req,res){
         fs.writeFileSync(uploadPath,file.buffer)
 
         const result=await uploadImageToImageKit(file,req.body)
-        
+        const roadName = await getRoadName(latitude, longitude);    
+        console.log("ROAD NAME:", roadName);
         const yoloResult = JSON.parse(req.body.detections)
         if (!yoloResult || yoloResult.length === 0) {
             return res.status(400).json({
@@ -59,7 +94,7 @@ async function createdetection(req,res){
         
         console.log("YOLO Result:",yoloResult)
         await detectModel.create({
-            busId,latitude,longitude,imageUrl:result.url,detections:yoloResult
+            busId,latitude,longitude,roadName,imageUrl:result.url,detections:yoloResult
         })
         return res.status(201).json({
             message:"Saved to DB",

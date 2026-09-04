@@ -6,6 +6,14 @@
 <title>Road Hazard Intelligence — Live Feed</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
 <style>
   :root{
     --bg: #0D0F12;
@@ -455,7 +463,36 @@
   }
   .hint{ font-size:0.78rem; color:var(--muted); margin-block-start:7px; }
   .err{ color:var(--red); font-size:0.82rem; margin-block-start:10px; }
+  .road-intelligence{
+  margin-block-end:32px;
+}
 
+.road-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:18px;
+}
+
+.road-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:24px;
+}
+
+.road-label{
+  font-size:0.72rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--muted);
+  margin-block-end:10px;
+}
+
+.road-value{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:1.8rem;
+  font-weight:600;
+}
   footer{
     text-align:center;
     padding:24px;
@@ -465,6 +502,18 @@
     border-block-start:1px solid var(--line);
     position:relative; z-index:1;
   }
+  .map-section{
+  margin-block-end:32px;
+}
+
+#incidentMap{
+  inline-size:100%;
+  block-size:420px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;
+  background:var(--surface-2);
+}
 </style>
 </head>
 <body>
@@ -502,6 +551,35 @@
 <div class="lane-divider"></div>
 
 <main>
+  <section class="map-section">
+  <div class="toolbar">
+    <h2>Incident Map</h2>
+  </div>
+
+  <div id="incidentMap"></div>
+</section>
+ <section class="road-intelligence">
+    <div class="toolbar">
+      <h2>Road Condition Intelligence</h2>
+    </div>
+
+    <div class="road-grid">
+      <div class="road-card">
+        <div class="road-label">Pothole Incidents</div>
+        <div class="road-value" id="roadPotholes">0</div>
+      </div>
+
+      <div class="road-card">
+        <div class="road-label">Accident Incidents</div>
+        <div class="road-value" id="roadAccidents">0</div>
+      </div>
+
+      <div class="road-card">
+        <div class="road-label">Risk Level</div>
+        <div class="road-value" id="roadRisk">LOW</div>
+      </div>
+    </div>
+  </section>
   <div class="toolbar">
     <h2>Recent Reports</h2>
     <div style="display:flex; gap:10px;">
@@ -677,16 +755,34 @@
   }
 
   function renderStats(records) {
-    let pothole = 0, accident = 0;
-    records.forEach(r => {
-      const cls = badgeClass(firstDetection(r).class);
-      if (cls === "pothole") pothole++;
-      if (cls === "accident") accident++;
-    });
-    animateCount(statTotal, records.length);
-    animateCount(statPothole, pothole);
-    animateCount(statAccident, accident);
+  let pothole = 0;
+  let accident = 0;
+
+  records.forEach(r => {
+    const cls = badgeClass(firstDetection(r).class);
+
+    if (cls === "pothole") pothole++;
+    if (cls === "accident") accident++;
+  });
+
+  animateCount(statTotal, records.length);
+  animateCount(statPothole, pothole);
+  animateCount(statAccident, accident);
+
+  // Road condition intelligence
+  document.getElementById("roadPotholes").textContent = pothole;
+  document.getElementById("roadAccidents").textContent = accident;
+
+  let risk = "LOW";
+
+  if (pothole + accident >= 3) {
+    risk = "HIGH";
+  } else if (pothole + accident >= 1) {
+    risk = "MEDIUM";
   }
+
+  document.getElementById("roadRisk").textContent = risk;
+}
 
   function renderGrid(records) {
     if (!records.length) {
@@ -727,7 +823,44 @@
       card.addEventListener("click", () => openDetail(card.dataset.id));
     });
   }
+  let incidentMap;
+  let mapMarkers = [];
+  function initMap() {
+    incidentMap = L.map("incidentMap").setView([28.6139, 77.2090], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(incidentMap);
+  }
+  function renderMapMarkers(records) {
+  // Remove old markers
+  mapMarkers.forEach(marker => incidentMap.removeLayer(marker));
+  mapMarkers = [];
 
+  records.forEach(record => {
+    const lat = Number(record.latitude);
+    const lng = Number(record.longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const det = firstDetection(record);
+    const type = badgeClass(det.class);
+
+    const marker = L.marker([lat, lng]).addTo(incidentMap);
+
+    marker.bindPopup(`
+      <strong>${det.class || "Unknown"}</strong><br>
+      Bus: ${record.busId || "—"}<br>
+      Confidence: ${
+        typeof det.confidence === "number"
+          ? `${(det.confidence * 100).toFixed(0)}%`
+          : "—"
+      }<br>
+      Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+    `);
+
+    mapMarkers.push(marker);
+  });
+}
   async function loadAll() {
     try {
       const res = await fetch(ENDPOINTS.all);
@@ -735,6 +868,7 @@
       const data = await res.json();
       const records = findRecordArray(data) || [];
       renderStats(records);
+      renderMapMarkers(records);
       renderGrid(records.slice().reverse());
     } catch (err) {
       gridWrap.innerHTML = `
@@ -873,7 +1007,7 @@
     setTimeout(() => e.currentTarget.classList.remove("spinning"), 600);
     loadAll();
   });
-
+  initMap();
   loadAll();
 </script>
 
