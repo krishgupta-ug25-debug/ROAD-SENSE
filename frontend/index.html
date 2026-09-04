@@ -450,6 +450,22 @@
     font-family:'Inter', sans-serif;
     font-size:0.88rem;
   }
+  .create-field select{
+    inline-size:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    color:var(--text);
+    padding:10px 12px;
+    font-family:'Inter', sans-serif;
+    font-size:0.88rem;
+  }
+
+  .create-field select:focus{
+    outline:2px solid var(--amber);
+    outline-offset:0;
+    border-color:transparent;
+  }
   .create-field input:focus{
     outline:2px solid var(--amber); outline-offset:0; border-color:transparent;
   }
@@ -479,7 +495,49 @@
   border-radius:var(--radius);
   padding:24px;
 }
+.road-search{
+  display:flex;
+  gap:12px;
+  margin-block-end:20px;
+}
+.analyzed-road{
+  margin-block-start:6px;
+  color:var(--muted);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.8rem;
+}
 
+.road-search input{
+  flex:1;
+  max-inline-size:500px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--surface);
+  color:var(--text);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.9rem;
+  outline:none;
+}
+
+.road-search input:focus{
+  border-color:var(--accent);
+}
+
+.road-search button{
+  padding:14px 22px;
+  border:none;
+  border-radius:var(--radius);
+  background:var(--amber);
+  color:#111;
+  font-weight:600;
+  cursor:pointer;
+  font-family:'IBM Plex Mono', monospace;
+}
+
+.road-search button:hover{
+  opacity:0.9;
+}
 .road-label{
   font-size:0.72rem;
   text-transform:uppercase;
@@ -558,28 +616,45 @@
 
   <div id="incidentMap"></div>
 </section>
- <section class="road-intelligence">
-    <div class="toolbar">
+<section class="road-intelligence">
+  <div class="toolbar">
+    <div>
       <h2>Road Condition Intelligence</h2>
-    </div>
-
-    <div class="road-grid">
-      <div class="road-card">
-        <div class="road-label">Pothole Incidents</div>
-        <div class="road-value" id="roadPotholes">0</div>
-      </div>
-
-      <div class="road-card">
-        <div class="road-label">Accident Incidents</div>
-        <div class="road-value" id="roadAccidents">0</div>
-      </div>
-
-      <div class="road-card">
-        <div class="road-label">Risk Level</div>
-        <div class="road-value" id="roadRisk">LOW</div>
+      <div class="analyzed-road" id="analyzedRoad">
+        No road selected
       </div>
     </div>
-  </section>
+  </div>
+
+  <div class="road-search">
+    <input
+      type="text"
+      id="roadSearchInput"
+      placeholder="Enter road name..."
+    />
+
+    <button id="roadSearchButton">
+      Analyze Road
+    </button>
+  </div>
+
+  <div class="road-grid">
+    <div class="road-card">
+      <div class="road-label">Pothole Incidents</div>
+      <div class="road-value" id="roadPotholes">0</div>
+    </div>
+
+    <div class="road-card">
+      <div class="road-label">Accident Incidents</div>
+      <div class="road-value" id="roadAccidents">0</div>
+    </div>
+
+    <div class="road-card">
+      <div class="road-label">Risk Level</div>
+      <div class="road-value" id="roadRisk">LOW</div>
+    </div>
+  </div>
+</section>
   <div class="toolbar">
     <h2>Recent Reports</h2>
     <div style="display:flex; gap:10px;">
@@ -627,18 +702,33 @@
       <div class="create-field">
         <label for="busId">Bus / Vehicle ID</label>
         <input type="text" id="busId" placeholder="e.g. BUS-014">
-      </div>
-      <div class="create-field">
-        <label for="latitude">Latitude</label>
-        <input type="text" id="latitude" placeholder="28.6139">
-      </div>
-      <div class="create-field">
-        <label for="longitude">Longitude</label>
-        <input type="text" id="longitude" placeholder="77.2090">
-      </div>
-      <div class="create-field">
-        <label for="imageFile">Image</label>
-        <input type="file" id="imageFile" accept="image/*">
+    </div>
+    <div class="create-field">
+      <label for="latitude">Latitude</label>
+      <input type="text" id="latitude" placeholder="28.6139">
+    </div>
+    <div class="create-field">
+      <label for="longitude">Longitude</label>
+      <input type="text" id="longitude" placeholder="77.2090">
+    </div>
+    <div class="create-field">
+      <label for="detectionType">Detection Type</label>
+      <select id="detectionType">
+        <option value="">Select detection type</option>
+        <option value="accident">Accident</option>
+        <option value="pothole">Pothole</option>
+      </select>
+    </div>
+    <div class="create-field">
+      <label for="manualRoadName">Road Name</label>
+      <input
+      type="text"
+      id="manualRoadName"
+      placeholder="e.g. Kartavya Path">
+    </div>
+    <div class="create-field">
+      <label for="imageFile">Image</label>
+      <input type="file" id="imageFile" accept="image/*">
         <div class="hint">Uploaded to the detection pipeline — the model runs server-side on this image.</div>
       </div>
       <div class="err" id="createErr" style="display:none;"></div>
@@ -923,6 +1013,10 @@
             <div class="val">${fmtTime(record)}</div>
           </div>
           <div class="field full">
+            <label>${ICONS.pin} Road</label>
+            <div class="val">${record.roadName || "Unknown Road"}</div>
+          </div>
+          <div class="field full">
             <label>${ICONS.pin} Coordinates</label>
             <div class="val">${record.latitude ?? "—"}, ${record.longitude ?? "—"}</div>
           </div>
@@ -958,49 +1052,78 @@
   });
 
   document.getElementById("submitCreate").addEventListener("click", async () => {
-    const busId = document.getElementById("busId").value.trim();
-    const latitude = document.getElementById("latitude").value.trim();
-    const longitude = document.getElementById("longitude").value.trim();
-    const fileInput = document.getElementById("imageFile");
-    const file = fileInput.files[0];
+  const busId = document.getElementById("busId").value.trim();
+  const latitude = document.getElementById("latitude").value.trim();
+  const longitude = document.getElementById("longitude").value.trim();
+  const detectionType = document.getElementById("detectionType").value;
+  const manualRoadName = document.getElementById("manualRoadName").value.trim();
+  const fileInput = document.getElementById("imageFile");
+  const file = fileInput.files[0];
 
-    createErr.style.display = "none";
+  createErr.style.display = "none";
 
-    if (!busId || !latitude || !longitude || !file) {
-      createErr.textContent = "Bus ID, latitude, longitude, and an image are all required.";
-      createErr.style.display = "block";
-      return;
+  if (!busId || !latitude || !longitude || !manualRoadName || !detectionType || !file) {
+    createErr.textContent =
+      "Bus ID, latitude,road name, longitude, detection type, and an image are all required.";
+    createErr.style.display = "block";
+    return;
+  }
+
+  const formData = new FormData();
+
+  formData.append("busId", busId);
+  formData.append("latitude", latitude);
+  formData.append("longitude", longitude);
+  formData.append("roadName",manualRoadName);
+
+  formData.append(
+    "detections",
+    JSON.stringify([
+      {
+        type: detectionType,
+        confidence: 1
+      }
+    ])
+  );
+
+  formData.append("Image", file);
+
+  const submitBtn = document.getElementById("submitCreate");
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting…";
+
+  try {
+    const res = await fetch(ENDPOINTS.create, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || `Server responded ${res.status}`);
     }
 
-    const formData = new FormData();
-    formData.append("busId", busId);
-    formData.append("latitude", latitude);
-    formData.append("longitude", longitude);
-    formData.append("Image", file);
+    createOverlay.classList.remove("open");
 
-    const submitBtn = document.getElementById("submitCreate");
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting…";
+    document.getElementById("busId").value = "";
+    document.getElementById("latitude").value = "";
+    document.getElementById("longitude").value = "";
+    document.
+    document.getElementById("detectionType").value = "";
+    fileInput.value = "";
 
-    try {
-      const res = await fetch(ENDPOINTS.create, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || `Server responded ${res.status}`);
+    loadAll();
 
-      createOverlay.classList.remove("open");
-      document.getElementById("busId").value = "";
-      document.getElementById("latitude").value = "";
-      document.getElementById("longitude").value = "";
-      fileInput.value = "";
-      loadAll();
-    } catch (err) {
-      createErr.textContent = err.message;
-      createErr.style.display = "block";
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Submit";
-    }
-  });
+  } catch (err) {
+    createErr.textContent = err.message;
+    createErr.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit";
+  }
+});
 
   document.getElementById("refreshBtn").addEventListener("click", (e) => {
     e.currentTarget.classList.add("spinning");
@@ -1009,6 +1132,67 @@
   });
   initMap();
   loadAll();
+  function analyzeRoad(records) {
+  const input = document.getElementById("roadSearchInput");
+  const roadName = input.value.trim().toLowerCase();
+
+  if (!roadName) {
+    alert("Please enter a road name.");
+    return;
+  }
+  document.getElementById("analyzedRoad").textContent =
+  `Analyzing: ${input.value.trim()}`;
+  let potholes = 0;
+  let accidents = 0;
+
+  records.forEach(record => {
+    const recordRoad = (record.roadName || "").toLowerCase();
+
+    if (!recordRoad.includes(roadName)) return;
+
+    const detection = firstDetection(record);
+    const type = badgeClass(detection.class);
+
+    if (type === "pothole") potholes++;
+    if (type === "accident") accidents++;
+  });
+
+  const total = potholes + accidents;
+
+  document.getElementById("roadPotholes").textContent = potholes;
+  document.getElementById("roadAccidents").textContent = accidents;
+
+  let risk = "LOW";
+
+  if (total >= 3) {
+    risk = "HIGH";
+  } else if (total >= 1) {
+    risk = "MEDIUM";
+  }
+
+  document.getElementById("roadRisk").textContent = risk;
+}
+
+document
+  .getElementById("roadSearchButton")
+  .addEventListener("click", async () => {
+    try {
+      const res = await fetch(ENDPOINTS.all);
+
+      if (!res.ok) {
+        throw new Error(`Server responded ${res.status}`);
+      }
+
+      const data = await res.json();
+      const records = findRecordArray(data) || [];
+
+      analyzeRoad(records);
+
+    } catch (err) {
+      console.error("Road analysis failed:", err);
+      alert("Could not load road data.");
+    }
+  });
 </script>
 
 </body>

@@ -83,7 +83,7 @@ async function createdetection(req,res){
         fs.writeFileSync(uploadPath,file.buffer)
 
         const result=await uploadImageToImageKit(file,req.body)
-        const roadName = await getRoadName(latitude, longitude);    
+        const roadName = req.body.roadName?.trim() || await getRoadName(latitude, longitude);    
         console.log("ROAD NAME:", roadName);
         const yoloResult = JSON.parse(req.body.detections)
         if (!yoloResult || yoloResult.length === 0) {
