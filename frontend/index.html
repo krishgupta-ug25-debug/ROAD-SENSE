@@ -10,9 +10,21 @@
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 />
-
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+/>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+/>
+
+<script
+  src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js">
 </script>
 <style>
   :root{
@@ -551,6 +563,42 @@
   font-size:1.8rem;
   font-weight:600;
 }
+.road-risk-reason{
+  margin-block-start:8px;
+  font-size:0.75rem;
+  color:var(--muted);
+  line-height:1.4;
+}
+.traffic-analytics{
+  margin-block-end:32px;
+}
+
+.traffic-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:18px;
+}
+
+.traffic-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:24px;
+}
+
+.traffic-label{
+  font-size:0.72rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--muted);
+  margin-block-end:10px;
+}
+
+.traffic-value{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:1.8rem;
+  font-weight:600;
+}
   footer{
     text-align:center;
     padding:24px;
@@ -562,6 +610,13 @@
   }
   .map-section{
   margin-block-end:32px;
+}
+.source{
+  margin-block-start:8px;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.72rem;
+  color:var(--muted);
+  letter-spacing:0.04em;
 }
 
 #incidentMap{
@@ -640,6 +695,14 @@
 
   <div class="road-grid">
     <div class="road-card">
+      <div class="road-label">AI Detections</div>
+      <div class="road-value" id="roadAI">0</div>
+    </div>
+    <div class="road-card">
+      <div class="road-label">Manual Reports</div>
+      <div class="road-value" id="roadManual">0</div>
+    </div>
+    <div class="road-card">
       <div class="road-label">Pothole Incidents</div>
       <div class="road-value" id="roadPotholes">0</div>
     </div>
@@ -652,7 +715,49 @@
     <div class="road-card">
       <div class="road-label">Risk Level</div>
       <div class="road-value" id="roadRisk">LOW</div>
+      <div class="road-risk-reason" id="roadRiskReason">
+        No incidents recorded.
+      </div>
     </div>
+  </div>
+</section>
+<section class="traffic-analytics">
+  <div class="toolbar">
+    <div>
+      <h2>Traffic / Fleet Analytics</h2>
+      <div class="analyzed-road">
+        System-wide incident overview
+      </div>
+    </div>
+  </div>
+
+  <div class="traffic-grid">
+
+    <div class="traffic-card">
+      <div class="traffic-label">Total Incidents</div>
+      <div class="traffic-value" id="totalIncidents">0</div>
+    </div>
+
+    <div class="traffic-card">
+      <div class="traffic-label">Active Buses</div>
+      <div class="traffic-value" id="activeBuses">0</div>
+    </div>
+
+    <div class="traffic-card">
+      <div class="traffic-label">Accidents</div>
+      <div class="traffic-value" id="totalAccidents">0</div>
+    </div>
+
+    <div class="traffic-card">
+      <div class="traffic-label">Potholes</div>
+      <div class="traffic-value" id="totalPotholes">0</div>
+    </div>
+
+    <div class="traffic-card">
+      <div class="traffic-label">High-Risk Roads</div>
+      <div class="traffic-value" id="highRiskRoads">0</div>
+    </div>
+
   </div>
 </section>
   <div class="toolbar">
@@ -741,14 +846,12 @@
 </div>
 
 <script>
-  // ---- CONFIG: point this at your backend ----
   const API_BASE = "https://road-sense-ekn7.onrender.com/yolo/api";
   const ENDPOINTS = {
     all: `${API_BASE}/getalldetection`,
     one: (id) => `${API_BASE}/getdetection/${id}`,
     create: `${API_BASE}/createdetection`,
   };
-  // ---------------------------------------------
 
   document.getElementById("apiTarget").textContent = API_BASE;
 
@@ -845,12 +948,12 @@
   }
 
   function renderStats(records) {
+  let total=0;
   let pothole = 0;
   let accident = 0;
-
+ 
   records.forEach(r => {
     const cls = badgeClass(firstDetection(r).class);
-
     if (cls === "pothole") pothole++;
     if (cls === "accident") accident++;
   });
@@ -859,19 +962,6 @@
   animateCount(statPothole, pothole);
   animateCount(statAccident, accident);
 
-  // Road condition intelligence
-  document.getElementById("roadPotholes").textContent = pothole;
-  document.getElementById("roadAccidents").textContent = accident;
-
-  let risk = "LOW";
-
-  if (pothole + accident >= 3) {
-    risk = "HIGH";
-  } else if (pothole + accident >= 1) {
-    risk = "MEDIUM";
-  }
-
-  document.getElementById("roadRisk").textContent = risk;
 }
 
   function renderGrid(records) {
@@ -903,6 +993,9 @@
               <span class="bus">${r.busId || "—"}</span>
               <span>${confText} · ${fmtTime(r)}</span>
             </div>
+            <div class="source">
+              ${r.source === "Manual" ? "MANUAL REPORT" : "AI DETECTION"}
+            </div>
           </div>
         </div>`;
     }).join("");
@@ -915,41 +1008,156 @@
   }
   let incidentMap;
   let mapMarkers = [];
+  let markerCluster=null;
   function initMap() {
     incidentMap = L.map("incidentMap").setView([28.6139, 77.2090], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors"
     }).addTo(incidentMap);
+    if (!markerCluster) {
+  markerCluster = L.markerClusterGroup({
+  maxClusterRadius: 200,
+  disableClusteringAtZoom: 18
+});
+  incidentMap.addLayer(markerCluster);
+}
   }
-  function renderMapMarkers(records) {
-  // Remove old markers
-  mapMarkers.forEach(marker => incidentMap.removeLayer(marker));
+function renderMapMarkers(records) {
+
+  console.log("MAP MARKERS CALLED:", records.length);
+
+  // Make sure cluster exists
+  if (!markerCluster) {
+    markerCluster = L.markerClusterGroup();
+    incidentMap.addLayer(markerCluster);
+  }
+
+  // Remove previous markers
+  markerCluster.clearLayers();
   mapMarkers = [];
 
   records.forEach(record => {
+
     const lat = Number(record.latitude);
     const lng = Number(record.longitude);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
 
     const det = firstDetection(record);
-    const type = badgeClass(det.class);
 
-    const marker = L.marker([lat, lng]).addTo(incidentMap);
+    const type = String(
+      det.type || det.class || "Unknown"
+    );
+
+    const source = record.source || "AI";
+
+    const confidence =
+      typeof det.confidence === "number"
+        ? `${(det.confidence * 100).toFixed(0)}%`
+        : "—";
+
+    const marker = L.marker([lat, lng]);
 
     marker.bindPopup(`
-      <strong>${det.class || "Unknown"}</strong><br>
+      <strong>${type}</strong><br>
       Bus: ${record.busId || "—"}<br>
-      Confidence: ${
-        typeof det.confidence === "number"
-          ? `${(det.confidence * 100).toFixed(0)}%`
-          : "—"
-      }<br>
+      Road: ${record.roadName || "Unknown Road"}<br>
+      Source: ${source}<br>
+      Confidence: ${confidence}<br>
       Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}
     `);
 
+    markerCluster.addLayer(marker);
     mapMarkers.push(marker);
   });
+  if (mapMarkers.length > 0) {
+  const group = L.featureGroup(mapMarkers);
+  incidentMap.fitBounds(group.getBounds(), {
+    padding: [30, 30]
+  });
+}
+
+  console.log(
+    "CLUSTER MARKER COUNT:",
+    markerCluster.getLayers().length
+  );
+}
+function renderTrafficAnalytics(records) {
+  let accidents = 0;
+  let potholes = 0;
+
+  const buses = new Set();
+  const roadStats = {};
+
+  records.forEach(record => {
+
+    // Count unique buses
+    if (record.busId) {
+      buses.add(record.busId);
+    }
+
+    // Get detection type
+    const detection = firstDetection(record);
+    const type = badgeClass(detection.class);
+
+    if (type === "accident") {
+      accidents++;
+    }
+
+    if (type === "pothole") {
+      potholes++;
+    }
+
+    // Group incidents by road
+    const roadName = record.roadName || "Unknown Road";
+
+    if (!roadStats[roadName]) {
+      roadStats[roadName] = {
+        accidents: 0,
+        potholes: 0
+      };
+    }
+
+    if (type === "accident") {
+      roadStats[roadName].accidents++;
+    }
+
+    if (type === "pothole") {
+      roadStats[roadName].potholes++;
+    }
+  });
+
+  // Calculate genuinely high-risk roads
+  let highRiskRoads = 0;
+
+  Object.values(roadStats).forEach(road => {
+
+    if (
+      road.accidents >= 1 ||
+      road.potholes >= 3
+    ) {
+      highRiskRoads++;
+    }
+
+  });
+
+  // Update dashboard
+  document.getElementById("totalIncidents").textContent =
+    accidents + potholes;
+
+  document.getElementById("activeBuses").textContent =
+    buses.size;
+
+  document.getElementById("totalAccidents").textContent =
+    accidents;
+
+  document.getElementById("totalPotholes").textContent =
+    potholes;
+
+  document.getElementById("highRiskRoads").textContent =
+    highRiskRoads;
 }
   async function loadAll() {
     try {
@@ -957,9 +1165,13 @@
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       const data = await res.json();
       const records = findRecordArray(data) || [];
+      console.log("API DATA:", data);
+      console.log("RECORDS:", records);
+      console.log("RECORD COUNT:", records.length);
       renderStats(records);
       renderMapMarkers(records);
       renderGrid(records.slice().reverse());
+      renderTrafficAnalytics(records);
     } catch (err) {
       gridWrap.innerHTML = `
         <div class="empty">
@@ -1071,6 +1283,7 @@
 
   const formData = new FormData();
 
+  formData.append("source", "Manual");
   formData.append("busId", busId);
   formData.append("latitude", latitude);
   formData.append("longitude", longitude);
@@ -1126,10 +1339,16 @@
 });
 
   document.getElementById("refreshBtn").addEventListener("click", (e) => {
-    e.currentTarget.classList.add("spinning");
-    setTimeout(() => e.currentTarget.classList.remove("spinning"), 600);
+    const button = e.currentTarget;
+
+    button.classList.add("spinning");
+
+    setTimeout(() => {
+        button.classList.remove("spinning");
+    }, 600);
+
     loadAll();
-  });
+});
   initMap();
   loadAll();
   function analyzeRoad(records) {
@@ -1144,33 +1363,73 @@
   `Analyzing: ${input.value.trim()}`;
   let potholes = 0;
   let accidents = 0;
+  let aiDetections = 0;
+  let manualReports = 0;
 
   records.forEach(record => {
-    const recordRoad = (record.roadName || "").toLowerCase();
 
-    if (!recordRoad.includes(roadName)) return;
+  const recordRoad = (record.roadName || "").toLowerCase();
 
-    const detection = firstDetection(record);
-    const type = badgeClass(detection.class);
+  if (!recordRoad.includes(roadName)) return;
 
-    if (type === "pothole") potholes++;
-    if (type === "accident") accidents++;
+  if (record.source === "AI") {
+    aiDetections++;
+  }
+
+  if (record.source === "Manual") {
+    manualReports++;
+  }
+
+  const detections = Array.isArray(record.detections)
+    ? record.detections
+    : [record.detections];
+
+  detections.forEach(detection => {
+
+    const type = String(
+      detection?.type || detection?.class || ""
+    ).toLowerCase();
+
+    if (type.includes("pothole")) {
+      potholes++;
+    }
+
+    if (type.includes("accident")) {
+      accidents++;
+    }
+
   });
+
+});
 
   const total = potholes + accidents;
 
   document.getElementById("roadPotholes").textContent = potholes;
   document.getElementById("roadAccidents").textContent = accidents;
+  document.getElementById("roadAI").textContent = aiDetections;
+  document.getElementById("roadManual").textContent = manualReports;
 
-  let risk = "LOW";
+let risk = "LOW";
 
-  if (total >= 3) {
-    risk = "HIGH";
-  } else if (total >= 1) {
-    risk = "MEDIUM";
-  }
+let reason = "No incidents recorded.";
 
-  document.getElementById("roadRisk").textContent = risk;
+if (accidents >= 2) {
+  risk = "HIGH";
+  reason = "High risk due to repeated accident detections.";
+} else if (accidents >= 1) {
+  risk = "HIGH";
+  reason = "High risk due to an accident detection.";
+} else if (potholes >= 3) {
+  risk = "HIGH";
+  reason = "High risk due to multiple pothole incidents.";
+} else if (potholes >= 1) {
+  risk = "MEDIUM";
+  reason = "Medium risk due to pothole incidents.";
+}
+
+document.getElementById("roadRisk").textContent = risk;
+document.getElementById("roadRiskReason").textContent = reason;
+
 }
 
 document
@@ -1193,6 +1452,12 @@ document
       alert("Could not load road data.");
     }
   });
+  setTimeout(() => {
+  console.log(
+    "ROAD RISK AFTER LOAD:",
+    document.getElementById("roadRisk").textContent
+  );
+}, 2000);
 </script>
 
 </body>

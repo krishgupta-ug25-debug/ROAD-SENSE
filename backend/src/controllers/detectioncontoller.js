@@ -94,7 +94,7 @@ async function createdetection(req,res){
         
         console.log("YOLO Result:",yoloResult)
         await detectModel.create({
-            busId,latitude,longitude,roadName,imageUrl:result.url,detections:yoloResult
+            source: req.body.source || "AI",busId,latitude,longitude,roadName,imageUrl:result.url,detections:yoloResult
         })
         return res.status(201).json({
             message:"Saved to DB",

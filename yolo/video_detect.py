@@ -10,10 +10,11 @@ from ultralytics import YOLO
 # ---- CONFIG: change these to match your setup ----
 POTHOLE_MODEL_PATH = "pothole_best.pt"              
 ACCIDENT_MODEL_PATH = "accident_best.pt"            
-VIDEO_SOURCE = "https://192.168.29.197:8080/video"  # RTSP or HTTP video stream URL, or local file path             
+VIDEO_SOURCE = VIDEO_SOURCE = "http://192.168.29.197:8080/video"             
 BACKEND_URL = "https://road-sense-ekn7.onrender.com/yolo/api/createdetection" 
 BUS_ID = "TEST-BUS-01"
-CONF_THRESHOLD = 0.4   
+CONF_THRESHOLD = 0.6   
+ALLOWED_CLASSES = {"Accident", "accident", "Pothole", "pothole"}
 CONFIRM_FRAMES = 3      
 HISTORY_SIZE = 5        
 REPORT_COOLDOWN = 8     
@@ -73,6 +74,7 @@ def report_to_backend(frame, detection_type, confidence):
     ]
 
     data = {
+        "source": "AI",
         "busId": BUS_ID,
         "latitude": "28.6139",
         "longitude": "77.2090",
@@ -156,7 +158,8 @@ def main():
                 label = m.names[cls_id]
                 conf = float(box.conf[0])
                 x1, y1, x2, y2 = [int(v) for v in box.xyxy[0]]
-
+                if label.lower() == "non accident":
+                    continue
                 this_frame_classes.add(label)
                 detections_this_frame.append((label, conf, [x1, y1, x2, y2]))
 

@@ -1,6 +1,11 @@
 const mongoose=require("mongoose")
 
 const Schema=new mongoose.Schema({
+    source: {
+    type: String,
+    enum: ["AI", "Manual"],
+    default: "AI"
+    },
     busId:{
         type:String,
         required:true
