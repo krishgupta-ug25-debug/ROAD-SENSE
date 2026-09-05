@@ -22,7 +22,7 @@ RoadSense detects road incidents from a video or camera source, records confirme
 
 ## Architecture
 
-''' mermaid
+```mermaid
 flowchart LR
     A[Phone / IP Webcam or video source] --> B[Local laptop / edge device]
     B --> C[accident_best.pt]
@@ -38,7 +38,7 @@ flowchart LR
     I --> L[Image storage]
     K --> M[Frontend dashboard]
     L --> M
-'''
+```
 
 ## AI detection flow
 
