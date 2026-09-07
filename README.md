@@ -117,8 +117,7 @@ The system performs AI inference locally before sending confirmed incidents to t
        v             v                v
     GIS Map     Road Intelligence   Fleet Analytics
 ```
-How it works ?
-
+## How it works ?
 A supported camera or video source provides the input.
 YOLO models run locally on the laptop/edge device.
 Accident and pothole detections are evaluated frame by frame.
@@ -128,8 +127,7 @@ Confirmed incidents are reported to the backend.
 The backend stores incident metadata in MongoDB and images through ImageKit.
 The frontend displays incidents on the dashboard and GIS map.
 Road Intelligence and Traffic/Fleet Analytics provide higher-level incident analysis.
-
-7. Repository Structure
+## 7. Repository Structure
 ```text
 ROAD-SENSE/
 ├── README.md
@@ -164,7 +162,7 @@ ROAD-SENSE/
     ├── main.py
     └── video_detect.py
 ```
-What goes where?
+## What goes where?
 Item	Location
 Source code	backend/, frontend/, yolo/
 YOLO model weights	yolo/
@@ -173,7 +171,7 @@ Project screenshots	assets/screenshots/
 Final PPT	submission/
 Demo video link	submission/DEMO.md
 Project overview	README.md
-8. Final Presentation
+## 8. Final Presentation
 
 The final SIH presentation is included in:
 
@@ -181,7 +179,7 @@ submission/
 
 See submission/PRESENTATION.md for the presentation reference.
 
-9. Demo Video
+## 9. Demo Video
 
 The project demo video will be linked in:
 
@@ -189,7 +187,7 @@ submission/DEMO.md
 
 The demonstration covers the complete workflow from video input and AI detection to backend storage and frontend visualization.
 
-10. Screenshots / Prototype Photos
+## 10. Screenshots / Prototype Photos
 
 Important project screenshots and prototype images are stored in:
 
@@ -204,7 +202,7 @@ Road Intelligence
 Traffic / Fleet Analytics
 Manual incident reporting
 Mobile/IP Webcam detection
-11. Installation
+## 11. Installation
 Backend
 cd backend
 npm install
@@ -233,7 +231,7 @@ Frontend
 
 The frontend can be served using a local web server or opened through the project's configured deployment.
 
-12. Run
+## 12. Run
 Start Backend
 cd backend
 npm start
@@ -259,7 +257,7 @@ Dashboard
 
 Open the frontend dashboard after the backend is running.
 
-13. Future Scope
+## 13. Future Scope
 Live public transport fleet telemetry
 Automatic GPS acquisition from connected vehicles
 Historical road-condition trends
