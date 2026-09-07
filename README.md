@@ -1,253 +1,277 @@
-# RoadSense
+# RoadSense – AI-Powered Urban Road Intelligence Platform
 
-### AI-powered road-incident monitoring
+RoadSense is an AI-powered road monitoring platform that uses public transport fleet cameras to detect road incidents such as potholes and accidents. AI inference runs locally on the edge device, while confirmed incidents are sent to a backend for storage and visualization.
 
-> Built for **Smart India Hackathon 2026** — Problem Statement **SIH26124**: *AI-Powered Mobile Urban Intelligence Platform Using Public Transport Fleet*.
+## 1. Project Information
 
-**Live dashboard:** bespoke-malabi-7137a9.netlify.app 
-**Backend API:** https://road-sense-ekn7.onrender.com
+- **Project Title:** RoadSense – AI-Powered Urban Road Intelligence Platform
+- **PS ID:** SIH26124
+- **PS Title:** AI-Powered Mobile Urban Intelligence Platform Using Public Transport Fleet
+- **Organization:** Bharat Electronics Limited
+- **Category:** Software
+- **Theme:** Smart Automation
 
-RoadSense detects road incidents from a video or camera source, records confirmed incidents, and presents them in a web dashboard. AI inference runs locally on the machine processing the video; the Node.js backend stores the confirmed results and the frontend visualises the stored incident data.
+## 2. Problem Statement
 
-## What is implemented
+Urban roads can develop potholes and other hazardous conditions, while road accidents may go unnoticed or remain difficult to track systematically. Public transport vehicles already travel across large portions of a city, creating an opportunity to use their cameras as a distributed road-monitoring system.
 
-- Separate local YOLO models for accidents and potholes.
-- Temporal confirmation: a class must appear in **3 of the most recent 5 frames** before it is treated as an incident.
-- Per-class cooldown (currently 8 seconds) to reduce duplicate reports while an incident remains in view.
-- `Non Accident` predictions are discarded in `yolo/video_detect.py` **before** temporal confirmation, drawing, or backend reporting. They therefore do not reach MongoDB or the dashboard.
-- Confirmed AI incidents include captured image evidence, class, confidence, configured bus ID, and configured coordinates.
-- Manual accident and pothole reports from the dashboard.
-- MongoDB storage, ImageKit image uploads, and reverse geocoding for a road name when one is not supplied.
-- Dashboard cards and details, a Leaflet map with clustered incident markers, road intelligence, and incident-based traffic/fleet analytics.
+RoadSense addresses this problem by using AI-based visual detection to identify road incidents from camera feeds and provide centralized incident intelligence for monitoring and analysis.
 
-## Architecture
+## 3. Proposed Solution
 
-```mermaid
-flowchart LR
-    A[Phone / IP Webcam or video source] --> B[Local laptop / edge device]
-    B --> C[accident_best.pt]
-    B --> D[pothole_best.pt]
-    C --> E[Filter Non Accident in video_detect.py]
-    D --> F[3-of-5 temporal confirmation]
-    E --> F
-    F --> G[Cooldown]
-    G --> H[Confirmed incident with image and metadata]
-    H --> I[Express backend]
-    J[Manual dashboard report] --> I
-    I --> K[MongoDB]
-    I --> L[Image storage]
-    K --> M[Frontend dashboard]
-    L --> M
-```
+RoadSense uses camera/video feeds from public transport vehicles or other supported video sources. YOLO-based models perform detection locally on the connected laptop/edge device.
 
-## AI detection flow
+The system uses:
 
-`yolo/video_detect.py` runs inference locally on the laptop/edge device. It loads two specialised trained models and runs both on each frame:
+- `accident_best.pt` for accident detection
+- `pothole_best.pt` for pothole detection
+- Temporal confirmation across 3 of 5 frames to reduce transient detections
+- Filtering of `Non Accident` predictions before they enter the incident pipeline
+- Image evidence and detection metadata for confirmed incidents
+- A backend API for incident storage
+- MongoDB for incident data
+- ImageKit for incident image storage
+- A web dashboard for visualization and road-level analysis
 
-- `yolo/accident_best.pt` — Accident detection model (approximately 5.5 MB)
-- `yolo/pothole_best.pt` — Pothole detection model (approximately 5.5 MB)
+## 4. Key Features
 
-Predictions below the configured confidence threshold are excluded by YOLO. `Non Accident` predictions from the accident model are discarded immediately in `video_detect.py`, before they enter temporal confirmation, are drawn, or are reported. Remaining relevant labels enter a rolling five-frame history; only labels seen in at least **3 of 5 frames** are confirmed. A confirmed class is reported only if its cooldown has expired.
+- AI-based accident detection
+- AI-based pothole detection
+- Confidence scores
+- Local/edge YOLO inference
+- Temporal confirmation using 3 of 5 frames
+- Non Accident prediction filtering
+- Incident image/evidence capture
+- Manual incident reporting
+- GPS coordinate recording
+- Road name association
+- Centralized incident database
+- GIS incident map with marker clustering
+- Road-wise incident analysis
+- Road risk classification
+- AI vs Manual incident tracking
+- Traffic / fleet analytics
+- Unique bus identification from incident data
 
-Only relevant confirmed detections proceed to the backend. The backend receives the already-confirmed AI result, image evidence, and metadata; it does **not** run the detection model as part of the current reporting path. `Non Accident` detections are never sent to the backend, database, or frontend.
+## 5. Technology Stack
 
-### Location note
+- **Frontend:** HTML, CSS, JavaScript
+- **Backend:** Node.js, Express.js
+- **Machine Learning:** Ultralytics YOLO, Python, OpenCV
+- **Models:** YOLO11n-based Accident and Pothole models
+- **Database:** MongoDB
+- **Image Storage:** ImageKit
+- **Maps / GIS:** Leaflet, OpenStreetMap
+- **Video Input:** Laptop webcam, local video files, or smartphone IP Webcam
+- **Deployment:** Render
 
-The AI script currently sends configured latitude and longitude values in `video_detect.py`. It does not automatically obtain GPS coordinates from the camera, phone, or vehicle. Update those configured values or integrate a location source before treating AI reports as live geolocated incidents.
+## 6. Architecture
 
-## Dashboard
-
-The static frontend in `frontend/index.html` provides:
-
-- incident totals, cards, and detailed incident views;
-- a Leaflet map that clusters stored incident locations and fits the view to them;
-- manual reporting with image, bus ID, coordinates, road name, and incident type;
-- road search and a simple risk classification based on stored incidents; and
-- traffic/fleet summary values: total incidents, accidents, potholes, high-risk roads, and unique bus IDs.
-
-“Active Buses” means unique bus IDs represented in stored incident records. It is not live bus tracking or active-vehicle telemetry. Similarly, the traffic/fleet view is incident-based, not a real-time traffic-density system.
-
-### Road risk rules
-
-Road intelligence uses the currently stored reports for a searched road:
-
-| Risk | Rule |
-| --- | --- |
-| High | At least one accident, or at least three potholes |
-| Medium | At least one pothole and no accident |
-| Low | No recorded incidents |
-
-This is a transparent count-based classification, not a predictive risk model.
-
-## Technology
-
-| Area | Used technology |
-| --- | --- |
-| Local inference | Python, Ultralytics YOLO, OpenCV |
-| API | Node.js, Express, Multer |
-| Data | MongoDB and Mongoose |
-| Image storage | ImageKit |
-| Dashboard | HTML, CSS, JavaScript, Leaflet, Leaflet.markercluster |
-| Road-name lookup | OpenStreetMap Nominatim reverse geocoding |
-
-## Project layout
+The system performs AI inference locally before sending confirmed incidents to the backend.
 
 ```text
-YOLO AI/
+                    Video Input
+                        |
+          +-------------+-------------+
+          |             |             |
+     Laptop Webcam    .mp4       Phone / IP Webcam
+          |             |             |
+          +-------------+-------------+
+                        |
+                        v
+              Local Laptop / Edge Device
+                        |
+             +----------+----------+
+             |                     |
+             v                     v
+    accident_best.pt       pothole_best.pt
+             |                     |
+             +----------+----------+
+                        |
+                        v
+                YOLO Detection
+                        |
+                        v
+             Non Accident Filter
+                        |
+                        v
+             Temporal Confirmation
+                  (3 of 5 frames)
+                        |
+                        v
+                Confirmed Incident
+                        |
+              +---------+---------+
+              |                   |
+              v                   v
+        Backend API          Image Evidence
+              |                   |
+              v                   v
+           MongoDB              ImageKit
+              |
+              v
+        Frontend Dashboard
+              |
+       +------+------+----------------+
+       |             |                |
+       v             v                v
+    GIS Map     Road Intelligence   Fleet Analytics
+How it works
+A supported camera or video source provides the input.
+YOLO models run locally on the laptop/edge device.
+Accident and pothole detections are evaluated frame by frame.
+Non Accident predictions are filtered out before entering the incident pipeline.
+A detection must be confirmed across 3 of 5 frames.
+Confirmed incidents are reported to the backend.
+The backend stores incident metadata in MongoDB and images through ImageKit.
+The frontend displays incidents on the dashboard and GIS map.
+Road Intelligence and Traffic/Fleet Analytics provide higher-level incident analysis.
+7. Repository Structure
+ROAD-SENSE/
+├── README.md
+├── SUBMISSION_GUIDE.md
+├── .gitignore
+│
+├── submission/
+│   ├── PRESENTATION.md
+│   ├── DEMO.md
+│   └── RoadSense_SIH2026_Presentation.pptx
+│
+├── docs/
+│   └── architecture.md
+│
+├── assets/
+│   └── screenshots/
+│
 ├── backend/
 │   ├── src/
-│   ├── requirements.txt
+│   │   ├── routers/
+│   │   └── services/
+│   ├── server.js
 │   ├── package.json
-│   └── server.js
+│   └── requirements.txt
+│
 ├── frontend/
 │   └── index.html
-├── uploads/
+│
 └── yolo/
-    ├── video_detect.py
     ├── accident_best.pt
-    └── pothole_best.pt
-```
+    ├── pothole_best.pt
+    ├── main.py
+    └── video_detect.py
+What goes where?
+Item	Location
+Source code	backend/, frontend/, yolo/
+YOLO model weights	yolo/
+Architecture documentation	docs/
+Project screenshots	assets/screenshots/
+Final PPT	submission/
+Demo video link	submission/DEMO.md
+Project overview	README.md
+8. Final Presentation
 
+The final SIH presentation is included in:
 
-## Setup
+submission/
 
-### Prerequisites
+See submission/PRESENTATION.md for the presentation reference.
 
-- Python with `venv`
-- Node.js and npm
-- A MongoDB connection
-- An ImageKit private key
-- The included `yolo/accident_best.pt` and `yolo/pothole_best.pt` model files
+9. Demo Video
 
-### 1. Create and activate a Python environment
+The project demo video will be linked in:
 
-From the repository root:
+submission/DEMO.md
 
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r .\backend\requirements.txt
-```
+The demonstration covers the complete workflow from video input and AI detection to backend storage and frontend visualization.
 
-### 2. Install backend packages
+10. Screenshots / Prototype Photos
 
-```powershell
+Important project screenshots and prototype images are stored in:
+
+assets/screenshots/
+
+Recommended screenshots include:
+
+Main dashboard
+AI detection output
+GIS incident map
+Road Intelligence
+Traffic / Fleet Analytics
+Manual incident reporting
+Mobile/IP Webcam detection
+11. Installation
+Backend
 cd backend
 npm install
-```
 
-### 3. Configure backend environment variables
+Configure the required environment variables in:
 
-Create `backend/.env`:
+backend/.env
 
-```env
-MONGO_URI=your_mongodb_connection_string
-IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-```
+Do not commit .env or any credentials to GitHub.
 
-### 4. Configure local inference
+YOLO / AI
 
-The current accident and pothole model files are already in `yolo/`. Review the configuration near the top of `yolo/video_detect.py` and ensure the paths point to `accident_best.pt` and `pothole_best.pt`:
+Create and activate a Python virtual environment, then install the required Python dependencies.
 
-- `POTHOLE_MODEL_PATH`
-- `ACCIDENT_MODEL_PATH`
-- `VIDEO_SOURCE`
-- `BACKEND_URL`
-- `BUS_ID`
-- `CONF_THRESHOLD`, confirmation, and cooldown values
-- the currently configured latitude and longitude used for AI reports
-
-### 5. Start the backend
-
-Keep the virtual environment available if you will run local inference, then from `backend/` run:
-
-```powershell
-node server.js
-```
-
-### 6. Open the dashboard
-
-Open `frontend/index.html` in a browser or serve the `frontend/` directory with a static web server. The frontend reads from the configured API base URL in `index.html`.
-
-### 7. Run local detection
-
-In a separate terminal, from the repository root:
-
-```powershell
-.\venv\Scripts\Activate.ps1
 cd yolo
-python video_detect.py
-```
+pip install -r requirements.txt
 
-Press `q` in the OpenCV window to stop the detection loop.
+The repository contains:
 
-## Video Input Options
+accident_best.pt
+pothole_best.pt
 
-RoadSense uses a **phone/IP Webcam stream as its primary mobile-camera demonstration**. The smartphone streams video over the local Wi-Fi network to the laptop, where YOLO inference runs locally on the laptop/edge device. A laptop webcam and a local `.mp4` file are alternative testing sources.
+so the trained model weights are available locally after cloning the repository.
 
-The current script selects its source through the `VIDEO_SOURCE` setting near the top of `yolo/video_detect.py`.
+Frontend
 
-### 1. Laptop Webcam
+The frontend can be served using a local web server or opened through the project's configured deployment.
 
-```python
-VIDEO_SOURCE = 0
-```
+12. Run
+Start Backend
+cd backend
+npm start
+Run YOLO Detection
 
-```powershell
+RoadSense supports three video input modes.
+
+Laptop webcam:
+
 python video_detect.py 0
-```
 
-### 2. Local Video File
+Local video file:
 
-```python
-VIDEO_SOURCE = "accident.mp4"
-```
-
-```powershell
 python video_detect.py "accident.mp4"
-```
 
-### 3. Phone Camera via IP Webcam
+Phone camera using IP Webcam:
 
-```python
-VIDEO_SOURCE = "http://PHONE_IP:8080/video"
-```
-
-```powershell
 python video_detect.py "http://PHONE_IP:8080/video"
-```
 
-Replace `PHONE_IP` with the IP address displayed by the IP Webcam app on the phone. Ensure the phone and laptop are connected to the same local Wi-Fi network.
+The IP Webcam option allows a smartphone camera to stream video over the local Wi-Fi network to the laptop, where YOLO inference is performed locally.
 
-> **Current implementation note:** `video_detect.py` currently reads `VIDEO_SOURCE` from its configuration and does not parse positional command-line arguments. Set the matching `VIDEO_SOURCE` value first, then run:
->
-> ```powershell
-> python video_detect.py
-> ```
+Dashboard
 
-## API
+Open the frontend dashboard after the backend is running.
 
-The backend currently exposes:
+13. Future Scope
+Live public transport fleet telemetry
+Automatic GPS acquisition from connected vehicles
+Historical road-condition trends
+Predictive road maintenance
+Real-time traffic-density estimation
+Mobile application
+Automated alerts and notifications
+Integration with municipal road-management systems
+Improved event-level tracking and duplicate prevention
+Model Information
 
-```text
-POST /yolo/api/createdetection
-GET  /yolo/api/getalldetection
-GET  /yolo/api/getdetection/:id
-```
+RoadSense uses two trained YOLO11n-based models:
 
-Stored incident records contain a source (`AI` or `Manual`), bus ID, latitude, longitude, road name, image URL, detection data, and timestamps. The create endpoint requires an image upload and detection data; it can reverse-geocode a road name from the supplied coordinates when no road name is provided.
+Model	Purpose
+accident_best.pt	Accident detection
+pothole_best.pt	Pothole detection
 
-## Current limitations
+The accident model was trained using an accident/non-accident dataset. During application inference, Non Accident predictions are filtered before temporal confirmation and backend submission, so they are not stored as incidents or displayed on the frontend.
 
-- Detection quality varies with the training data, camera position, lighting, and scene conditions. False accident detections can still occur; filtering `Non Accident` labels only prevents those labels from being reported.
-- AI location is configured in the script, rather than acquired automatically from GPS.
-- The current cooldown is class-based, so it limits repeated reports for the same class within its time window; it is not object tracking.
-- Dashboard map, road intelligence, and analytics reflect stored incidents after the dashboard is loaded or refreshed; they are not a live telemetry feed.
-- Road risk uses simple stored-incident counts and does not forecast future risk.
-
-## Potential next steps
-
-- Integrate a GPS/location source for AI reports.
-- Add live fleet telemetry and vehicle tracking.
-- Improve and retrain the accident model as a single-class incident detector.
-- Add object-aware duplicate suppression, alerts, historical trends, and operational deployment configuration.
+The pothole model is trained specifically for pothole detection.
