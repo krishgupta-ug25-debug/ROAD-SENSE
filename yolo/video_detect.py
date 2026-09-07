@@ -10,7 +10,7 @@ from ultralytics import YOLO
 # ---- CONFIG: change these to match your setup ----
 POTHOLE_MODEL_PATH = "pothole_best.pt"              
 ACCIDENT_MODEL_PATH = "accident_best.pt"            
-VIDEO_SOURCE = VIDEO_SOURCE = "http://192.168.29.197:8080/video"             
+VIDEO_SOURCE = VIDEO_SOURCE = 0 
 BACKEND_URL = "https://road-sense-ekn7.onrender.com/yolo/api/createdetection" 
 BUS_ID = "TEST-BUS-01"
 CONF_THRESHOLD = 0.6   
