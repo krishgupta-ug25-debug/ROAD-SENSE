@@ -117,7 +117,8 @@ The system performs AI inference locally before sending confirmed incidents to t
        v             v                v
     GIS Map     Road Intelligence   Fleet Analytics
 ```
-How it works
+How it works ?
+
 A supported camera or video source provides the input.
 YOLO models run locally on the laptop/edge device.
 Accident and pothole detections are evaluated frame by frame.
@@ -127,6 +128,7 @@ Confirmed incidents are reported to the backend.
 The backend stores incident metadata in MongoDB and images through ImageKit.
 The frontend displays incidents on the dashboard and GIS map.
 Road Intelligence and Traffic/Fleet Analytics provide higher-level incident analysis.
+
 7. Repository Structure
 ```text
 ROAD-SENSE/
