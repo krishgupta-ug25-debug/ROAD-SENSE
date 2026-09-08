@@ -13,7 +13,7 @@ RoadSense is an AI-powered road monitoring platform that uses public transport f
 
 ## Live Demo
 
-- **Frontend:** [RoadSense Dashboard](bespoke-malabi-7137a9.netlify.app)
+- **Frontend:** [RoadSense Dashboard](https://bespoke-malabi-7137a9.netlify.app)
 
 ## 2. Problem Statement
 
