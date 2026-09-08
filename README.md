@@ -11,6 +11,11 @@ RoadSense is an AI-powered road monitoring platform that uses public transport f
 - **Category:** Software
 - **Theme:** Smart Automation
 
+## Live Demo
+
+- **Frontend:** [RoadSense Dashboard](bespoke-malabi-7137a9.netlify.app)
+- **Backend API:** [RoadSense Backend](https://road-sense-ekn7.onrender.com)
+
 ## 2. Problem Statement
 
 Urban roads can develop potholes and other hazardous conditions, while road accidents may go unnoticed or remain difficult to track systematically. Public transport vehicles already travel across large portions of a city, creating an opportunity to use their cameras as a distributed road-monitoring system.
