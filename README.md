@@ -167,27 +167,30 @@ ROAD-SENSE/
     └── video_detect.py
 ```
 ## What goes where?
-Item	Location
-Source code	backend/, frontend/, yolo/
-YOLO model weights	yolo/
-Architecture documentation	docs/
-Project screenshots	assets/screenshots/
-Final PPT	submission/
-Demo video link	submission/DEMO.md
-Project overview	README.md
+
+| Item | Location |
+|---|---|
+| Source code | `backend/`, `frontend/`, `yolo/` |
+| YOLO model weights | `yolo/` |
+| Architecture documentation | `docs/` |
+| Project screenshots | `assets/screenshots/` |
+| Final PPT | `submission/` |
+| Demo video link | `submission/DEMO.md` |
+| Project overview | `README.md` |
+
 ## 8. Final Presentation
 
 The final SIH presentation is included in:
 
-submission/
+`submission/`
 
-See submission/PRESENTATION.md for the presentation reference.
+See `submission/PRESENTATION.md` for the presentation reference.
 
 ## 9. Demo Video
 
-The project demo video will be linked in:
+The project demo video is linked in:
 
-submission/DEMO.md
+`submission/DEMO.md`
 
 The demonstration covers the complete workflow from video input and AI detection to backend storage and frontend visualization.
 
@@ -195,66 +198,80 @@ The demonstration covers the complete workflow from video input and AI detection
 
 Important project screenshots and prototype images are stored in:
 
-assets/screenshots/
+`assets/screenshots/`
 
 Recommended screenshots include:
 
-Main dashboard
-AI detection output
-GIS incident map
-Road Intelligence
-Traffic / Fleet Analytics
-Manual incident reporting
-Mobile/IP Webcam detection
+- Main Dashboard
+- AI Detection Output
+- GIS Incident Map
+- Road Condition Intelligence
+- Traffic / Fleet Analytics
+- Manual Incident Reporting
+- Mobile / IP Webcam Detection
+
 ## 11. Installation
-Backend
+
+### Backend
+
+```bash
 cd backend
 npm install
+```
 
 Configure the required environment variables in:
 
-backend/.env
+`backend/.env`
 
-Do not commit .env or any credentials to GitHub.
+Do not commit `.env` or any credentials to GitHub.
 
-YOLO / AI
+### YOLO Environment
 
-Create and activate a Python virtual environment, then install the required Python dependencies.
+Create and activate a Python virtual environment, then install the required dependencies:
 
+```bash
 cd yolo
 pip install -r requirements.txt
+```
 
-The repository contains:
+The YOLO models are already included in the `yolo/` directory:
 
-accident_best.pt
-pothole_best.pt
+- `accident_best.pt`
+- `pothole_best.pt`
 
-so the trained model weights are available locally after cloning the repository.
+### Frontend
 
-Frontend
+The frontend is contained in:
 
-The frontend can be served using a local web server or opened through the project's configured deployment.
+`frontend/index.html`
 
+No separate frontend package installation is required.
+
+For local testing, open `frontend/index.html` in a browser after the backend is running.
+
+The frontend connects to the deployed RoadSense backend API.
 ## 12. Run
-Start Backend
+### Start Backend
+```bash
 cd backend
 npm start
+```
 Run YOLO Detection
 
 RoadSense supports three video input modes.
 
-Laptop webcam:
-
+1. Laptop Webcam
+```bash
 python video_detect.py 0
-
-Local video file:
-
+```
+3. Local Video File
+```bash
 python video_detect.py "accident.mp4"
-
-Phone camera using IP Webcam:
-
+```
+4. Phone Camera Using IP Webcam
+```bash
 python video_detect.py "http://PHONE_IP:8080/video"
-
+```
 The IP Webcam option allows a smartphone camera to stream video over the local Wi-Fi network to the laptop, where YOLO inference is performed locally.
 
 Dashboard
@@ -262,23 +279,25 @@ Dashboard
 Open the frontend dashboard after the backend is running.
 
 ## 13. Future Scope
-Live public transport fleet telemetry
-Automatic GPS acquisition from connected vehicles
-Historical road-condition trends
-Predictive road maintenance
-Real-time traffic-density estimation
-Mobile application
-Automated alerts and notifications
-Integration with municipal road-management systems
-Improved event-level tracking and duplicate prevention
-Model Information
+
+- Live public transport fleet telemetry
+- Automatic GPS acquisition from connected vehicles
+- Historical road-condition trends
+- Predictive road maintenance
+- Real-time traffic-density estimation
+- Mobile application
+- Automated alerts and notifications
+- Integration with municipal road-management systems
+- Improved event-level tracking and duplicate prevention
+## Model Information
 
 RoadSense uses two trained YOLO11n-based models:
 
-Model	Purpose
-accident_best.pt	Accident detection
-pothole_best.pt	Pothole detection
+| Model | Purpose |
+|---|---|
+| `accident_best.pt` | Accident detection |
+| `pothole_best.pt` | Pothole detection |
 
-The accident model was trained using an accident/non-accident dataset. During application inference, Non Accident predictions are filtered before temporal confirmation and backend submission, so they are not stored as incidents or displayed on the frontend.
+The accident model was trained using an accident/non-accident dataset. During application inference, `Non Accident` predictions are filtered before temporal confirmation and backend submission, so they are not stored as incidents or displayed on the frontend.
 
 The pothole model is trained specifically for pothole detection.
