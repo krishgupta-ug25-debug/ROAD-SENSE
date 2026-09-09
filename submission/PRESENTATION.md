@@ -2,4 +2,4 @@
 
 The final presentation for RoadSense is available below:
 
-📊 [Download / View the SIH 2026 Presentation](./TENSORS_SIH2026_Presentation.pptx)
+📊 [View the SIH 2026 Presentation](https://canva.link/q9xelb998yx6b1d)
