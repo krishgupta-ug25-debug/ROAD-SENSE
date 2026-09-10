@@ -67,7 +67,7 @@ The system uses:
 - **Image Storage:** ImageKit
 - **Maps / GIS:** Leaflet, OpenStreetMap
 - **Video Input:** Laptop webcam, local video files, or smartphone IP Webcam
-- **Deployment:** Render
+- **Deployment:** Render, Netlify
 
 ## 6. Architecture
 
